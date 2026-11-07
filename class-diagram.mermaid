@@ -1,0 +1,105 @@
+%% Diagramma semplificato del nucleo del server.
+%% Sono omessi rete, interfaccia client, messaggi, enum, getter e setter.
+classDiagram
+    direction TB
+
+    class gameManager {
+        -gameInstance current_game
+        -Map~Integer, gameInstance~ historical_games
+        -long game_duration_seconds
+        +startNewGame()
+        +endCurrentGame()
+        +finishExpiredGame()
+        +joinCurrentGame(account_id)
+        +submitProposal(account_id, words)
+        +getGameInfo(account_id, game_id)
+    }
+    class userManager {
+        -Map~String, user~ users
+        +register(username, password)
+        +authenticate(username, password)
+        +getUserByUsername(username)
+        +getUserById(account_id)
+        +updateCredentials(...)
+    }
+    class puzzleRepository {
+        -JsonReader reader
+        -int current_puzzle_index
+        +getNextPuzzle()
+        +setCurrentPuzzleIndex(index)
+    }
+    class persistenceManager {
+        +load(games_state_path)
+        +save(games_state_path, ...)
+    }
+    class user {
+        -String account_id
+        -String username
+        -String password
+        -int total_score
+        -userStats stats
+    }
+    class userStats {
+        -int games_played
+        -int games_won
+        -int games_lost
+        -int games_unfinished
+        -int current_streak
+        -int max_streak
+        -int perfect_puzzles
+        -int[] mistake_histogram
+    }
+    class gameInstance {
+        -int game_id
+        -long start_time_epoch_millis
+        -long end_time_epoch_millis
+        -gameStatus status
+        -gameDefinition definition
+        -Map~String, playerGameState~ player_states
+    }
+    class playerGameState {
+        -String account_id
+        -int correct_groups_found
+        -int wrong_proposals
+        -int current_score
+        -playerOutcome outcome
+        -Set~String~ found_group_keys
+    }
+    class gameDefinition {
+        -int game_id
+        -List~groupDefinition~ groups
+    }
+    class groupDefinition {
+        -String theme
+        -List~String~ words
+    }
+
+    gameManager --> userManager
+    gameManager --> puzzleRepository
+    gameManager --> gameInstance
+    userManager "1" o-- "0..*" user
+    user "1" *-- "1" userStats
+    gameInstance "1" *-- "0..*" playerGameState
+    playerGameState ..> user : account_id
+    gameInstance --> gameDefinition
+    gameDefinition "1" *-- "4" groupDefinition
+    puzzleRepository ..> gameDefinition : legge
+    persistenceManager ..> user : salva / carica
+    persistenceManager ..> gameInstance : salva / carica
+
+    %% Collegamenti ai sorgenti, relativi alla cartella del diagramma.
+    click gameManager href "./src/server/core/gameManager.java" "Apri gameManager.java"
+    click userManager href "./src/server/core/userManager.java" "Apri userManager.java"
+    click puzzleRepository href "./src/server/core/puzzleRepository.java" "Apri puzzleRepository.java"
+    click persistenceManager href "./src/server/core/persistenceManager.java" "Apri persistenceManager.java"
+    click user href "./src/common/model/user.java" "Apri user.java"
+    click userStats href "./src/common/model/userStats.java" "Apri userStats.java"
+    click gameInstance href "./src/common/model/gameInstance.java" "Apri gameInstance.java"
+    click playerGameState href "./src/common/model/playerGameState.java" "Apri playerGameState.java"
+    click gameDefinition href "./src/common/model/gameDefinition.java" "Apri gameDefinition.java"
+    click groupDefinition href "./src/common/model/groupDefinition.java" "Apri groupDefinition.java"
+
+    note for user "account_id stabile; username modificabile"
+    note for userManager "users è indicizzata per username"
+    note for gameManager "Stato condiviso protetto da state_lock"
+    note for playerGameState "account_id è salvato nella chiave JSON accountId"
